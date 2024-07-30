@@ -9,6 +9,7 @@ from twilio.rest import Client
 from selenium.webdriver.chrome.options import Options
 from dotenv import load_dotenv
 import logging
+import redis
 
 load_dotenv()
 
@@ -39,10 +40,12 @@ client = Client(twilio_sid, twilio_token)
 
 target = datetime.strptime("30 August, 2025", "%d %B, %Y")
 
-success_count = 0
-failure_count = 1285
-exception_count = 241
-time_spend = 72843.14466524124
+r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+success_count = int(r.get('success_count', 0))
+failure_count = int(r.get('failure_count', 0))
+exception_count = int(r.get('exception_count', 0))
+time_spend = float(r.get('time_spend', 0))
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new") # for Chrome >= 109
@@ -136,6 +139,11 @@ while True:
     print(f"Failure Count: {failure_count}/{total_count}")
     print(f"Exception Count: {exception_count}/{total_count}")
     print(f"Total time spent: {time_spend}")
+
+    r.set('success_count', success_count)
+    r.set('failure_count', failure_count)
+    r.set('exception_count', exception_count)
+    r.set('time_spend', time_spend)
 
     logging.info(f"Success Count: {success_count}/{total_count}")
     logging.info(f"Failure Count: {failure_count}/{total_count}")
