@@ -42,10 +42,10 @@ target = datetime.strptime("30 August, 2025", "%d %B, %Y")
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-success_count = int(r.get('success_count', 0))
-failure_count = int(r.get('failure_count', 0))
-exception_count = int(r.get('exception_count', 0))
-time_spend = float(r.get('time_spend', 0))
+success_count = int(r.get('success_count'))
+failure_count = int(r.get('failure_count'))
+exception_count = int(r.get('exception_count'))
+time_spend = float(r.get('time_spend'))
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new") # for Chrome >= 109
