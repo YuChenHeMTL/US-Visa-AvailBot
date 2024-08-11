@@ -7,6 +7,11 @@ from tqdm import tqdm
 from datetime import datetime
 from twilio.rest import Client
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 from dotenv import load_dotenv
 import logging
 import redis
@@ -35,6 +40,7 @@ target_phone_number = os.environ.get("TARGET_PHONE_NUMBER")
 self_phone_number = os.environ.get("SELF_PHONE_NUMBER")
 from_phone_number = os.environ.get("FROM_PHONE_NUMBER")
 message_service_id = os.environ.get("MESSAGE_SERVICE_ID")
+# print(twilio_sid, twilio_token, login_email, login_password, target_phone_number, self_phone_number, from_phone_number, message_service_id)
 
 client = Client(twilio_sid, twilio_token)
 
@@ -46,42 +52,73 @@ success_count = int(r.get('success_count'))
 failure_count = int(r.get('failure_count'))
 exception_count = int(r.get('exception_count'))
 time_spend = float(r.get('time_spend'))
+# success_count = 9
+# failure_count = 1318
+# exception_count = 241
+# time_spend = 74823.70827031136
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new") # for Chrome >= 109
+service = Service("/usr/lib/chromium-browser/chromedriver")
+timeout_delay = 6
 
 while True:
     try:
         start = time.time()
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        # driver = webdriver.Chrome(options=chrome_options)
         driver.get("https://ais.usvisa-info.com/en-ca/niv/users/sign_in")
-        custom_range_sleep(8, 12)
+        try:
+            WebDriverWait(driver, timeout_delay).until(EC.presence_of_element_located((By.ID, "user_email")))
+        except TimeoutException:
+            print("Initial Loading took too much time!")
+            failure_count += 1
+        # custom_range_sleep(6, 10)
         # enter email
         driver.find_element("id", "user_email").send_keys(login_email)
-        custom_range_sleep(1, 3)
+        custom_range_sleep(1, 1)
         # enter password
         driver.find_element("id", "user_password").send_keys(login_password)
-        custom_range_sleep(1, 3)
+        custom_range_sleep(1, 1)
         # click the confirm policy checkbox
         driver.find_element(By.CLASS_NAME, "icheck-area-20").click()
         # print(checkbox)
         # checkbox[0].click()
         # driver.find_element("id", "policy_confirmed").click()
-        custom_range_sleep(1, 3)
+        custom_range_sleep(1, 1)
         driver.find_element("name","commit").click()
-        custom_range_sleep(8, 12)
+        try:
+            WebDriverWait(driver, timeout_delay).until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='continue_actions']")))
+        except TimeoutException:
+            print("Second Loading took too much time!")
+            failure_count += 1
+            continue
+        # custom_range_sleep(2, 4)
 
         # click continue
         driver.find_element(By.CSS_SELECTOR, "a[href*='continue_actions']").click()
-        custom_range_sleep(5, 8)
+        try:
+            WebDriverWait(driver, timeout_delay).until(EC.presence_of_element_located((By.CLASS_NAME, "accordion-item")))
+        except TimeoutException:
+            print("Accordion Loading took too much time!")
+            failure_count += 1
+            continue
+        # custom_range_sleep(2, 4)
 
         # click Pay Visa Fee
         accordions = driver.find_elements(By.CLASS_NAME, "accordion-item")
         accordions[0].click()
-        custom_range_sleep(2, 4)
+        custom_range_sleep(1, 1)
         # click Pay Visa Fee button
         driver.find_element(By.CLASS_NAME, "small-only-expanded").click()
-        custom_range_sleep(5, 8)
+        # custom_range_sleep(2, 4)
+
+        try:
+            WebDriverWait(driver, timeout_delay).until(EC.presence_of_element_located((By.CLASS_NAME, "for-layout")))
+        except TimeoutException:
+            print("Table Loading took too much time!")
+            failure_count += 1
+            continue
 
         # find table
         table = driver.find_element(By.CLASS_NAME, "for-layout")
@@ -150,4 +187,4 @@ while True:
     logging.info(f"Exception Count: {exception_count}/{total_count}")
     logging.info(f"Total time spent: {time_spend}")
 
-    custom_range_sleep(5, 10)
+    custom_range_sleep(10, 15)
